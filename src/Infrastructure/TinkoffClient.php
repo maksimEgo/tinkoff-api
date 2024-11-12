@@ -6,6 +6,7 @@ use Egorov\TinkoffApi\Domain\Entity\InitPayment;
 use Egorov\TinkoffApi\Domain\Entity\Order;
 use Egorov\TinkoffApi\Domain\Entity\Payment;
 use Egorov\TinkoffApi\Infrastructure\Mapper\InitPaymentMapper;
+use Egorov\TinkoffApi\Infrastructure\Mapper\StatePaymentMapper;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -64,13 +65,15 @@ class TinkoffClient implements PaymentClientInterface
         return InitPaymentMapper::fromArray($response);
     }
 
-    public function getPaymentStatus(Order $order): array
+    public function getPaymentStatus(string $paymentId): Payment
     {
         $data = [
-            'OrderId' => $order->getOrderId()->getValue(),
+            'PaymentId' => $paymentId,
         ];
 
-        return $this->sendRequest('GetState', $data);
+        $response = $this->sendRequest('GetState', $data);
+
+        return StatePaymentMapper::fromArray($response);
     }
 
     private function sendRequest(string $endpoint, array $data): array
