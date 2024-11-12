@@ -65,11 +65,15 @@ class TinkoffClient implements PaymentClientInterface
         return InitPaymentMapper::fromArray($response);
     }
 
-    public function getPaymentStatus(string $paymentId): Payment
+    public function getPaymentStatus(string $paymentId, ?string $clientIp = null): Payment
     {
         $data = [
             'PaymentId' => $paymentId,
         ];
+
+        if ($clientIp !== null) {
+            $data['IP'] = $clientIp;
+        }
 
         $response = $this->sendRequest('GetState', $data);
 
