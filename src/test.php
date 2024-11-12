@@ -8,7 +8,7 @@ use Egorov\TinkoffApi\Domain\ValueObject\Amount;
 use Egorov\TinkoffApi\Domain\ValueObject\OrderId;
 use Egorov\TinkoffApi\Infrastructure\TinkoffClient;
 
-$orderId = new OrderId('Pay_TEST_ORDER_OBJE2а3');
+$orderId = new OrderId('test_order_123_321');
 $amount = new Amount(10000);
 
 $order = Order::build($orderId, $amount)
@@ -23,3 +23,7 @@ $tinkoffClient = new TinkoffClient($terminalKey, $password);
 $payment = $tinkoffClient->initiatePayment($order);
 
 var_dump($payment);
+
+$status = $tinkoffClient->getPaymentStatus('5308622758');
+
+var_dump($status);

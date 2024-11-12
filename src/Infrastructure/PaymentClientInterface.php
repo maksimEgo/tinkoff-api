@@ -8,5 +8,5 @@ use Egorov\TinkoffApi\Domain\Entity\Payment;
 interface PaymentClientInterface
 {
     public function initiatePayment(Order $order): Payment;
-    public function getPaymentStatus(Order $order): array;
+    public function getPaymentStatus(string $paymentId, ?string $clientIp = null): Payment;
 }
