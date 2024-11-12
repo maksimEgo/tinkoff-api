@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Domain\Entity;
 
 use Egorov\TinkoffApi\Domain\Enum\RouteEnum;

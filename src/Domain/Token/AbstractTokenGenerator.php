@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Domain\Token;
 
 abstract class AbstractTokenGenerator implements TokenGeneratorInterface

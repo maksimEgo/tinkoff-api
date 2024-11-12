@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Infrastructure;
 
 use Egorov\TinkoffApi\Domain\Entity\InitPayment;
@@ -61,6 +63,7 @@ class TinkoffClient implements PaymentClientInterface
             'NotificationURL' => $order->getNotificationURL(),
             'SuccessURL'      => $order->getSuccessURL(),
             'FailURL'         => $order->getFailURL(),
+            'RedirectDueDate' => $order->getRedirectDueDate()?->format('Y-m-d\TH:i:sP')
         ];
 
         $tokenGenerator = new InitTokenGenerator($this->password);

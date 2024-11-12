@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Domain\ValueObject;
 
 use InvalidArgumentException;
@@ -12,6 +14,10 @@ class Amount
     {
         if ($value <= 0) {
             throw new InvalidArgumentException('Amount must be greater than zero.');
+        }
+
+        if (strlen((string)$value) > 10) {
+            throw new InvalidArgumentException('Amount must not exceed 10 digits.');
         }
 
         $this->value = $value;

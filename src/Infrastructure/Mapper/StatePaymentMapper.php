@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Infrastructure\Mapper;
 
 use Egorov\TinkoffApi\Domain\Entity\StatePayment;
