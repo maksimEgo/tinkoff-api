@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Infrastructure;
 
 use Egorov\TinkoffApi\Domain\Entity\InitPayment;
 use Egorov\TinkoffApi\Domain\Entity\Order;
 use Egorov\TinkoffApi\Domain\Entity\Payment;
+use Egorov\TinkoffApi\Domain\Token\GetStateTokenGenerator;
+use Egorov\TinkoffApi\Domain\Token\InitTokenGenerator;
 use Egorov\TinkoffApi\Infrastructure\Mapper\InitPaymentMapper;
 use Egorov\TinkoffApi\Infrastructure\Mapper\StatePaymentMapper;
 use GuzzleHttp\Client;
@@ -48,6 +52,7 @@ class TinkoffClient implements PaymentClientInterface
     public function initiatePayment(Order $order): Payment
     {
         $data = [
+            'TerminalKey'     => $this->terminalKey,
             'Amount'          => $order->getAmount()->getValue(),
             'OrderId'         => $order->getOrderId()->getValue(),
             'Description'     => $order->getDescription(),
@@ -58,7 +63,11 @@ class TinkoffClient implements PaymentClientInterface
             'NotificationURL' => $order->getNotificationURL(),
             'SuccessURL'      => $order->getSuccessURL(),
             'FailURL'         => $order->getFailURL(),
+            'RedirectDueDate' => $order->getRedirectDueDate()?->format('Y-m-d\TH:i:sP')
         ];
+
+        $tokenGenerator = new InitTokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
 
         $response = $this->sendRequest('Init', $data);
 
@@ -68,12 +77,16 @@ class TinkoffClient implements PaymentClientInterface
     public function getPaymentStatus(string $paymentId, ?string $clientIp = null): Payment
     {
         $data = [
-            'PaymentId' => $paymentId,
+            'TerminalKey' => $this->terminalKey,
+            'PaymentId'   => $paymentId,
         ];
 
         if ($clientIp !== null) {
             $data['IP'] = $clientIp;
         }
+
+        $tokenGenerator = new GetStateTokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
 
         $response = $this->sendRequest('GetState', $data);
 
@@ -82,9 +95,6 @@ class TinkoffClient implements PaymentClientInterface
 
     private function sendRequest(string $endpoint, array $data): array
     {
-        $data['TerminalKey'] = $this->terminalKey;
-        $data['Token'] = $this->generateToken($data);
-
         try {
             $response = $this->httpClient->post($endpoint, [
                 'headers' => [
@@ -99,13 +109,5 @@ class TinkoffClient implements PaymentClientInterface
             error_log('Request to Tinkoff failed: ' . $e->getMessage());
             throw new \RuntimeException('Tinkoff API request failed.');
         }
-    }
-
-    private function generateToken(array $data): string
-    {
-        $data['Password'] = $this->password;
-        ksort($data);
-        $values = array_values($data);
-        return hash('sha256', implode('', $values));
     }
 }
