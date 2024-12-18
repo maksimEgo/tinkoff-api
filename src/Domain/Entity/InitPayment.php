@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Egorov\TinkoffApi\Domain\Entity;
 
 class InitPayment extends Payment
@@ -54,27 +56,27 @@ class InitPayment extends Payment
         string  $errorCode,
         bool    $success,
         string  $paymentId,
-        ?string $paymentURL = null,
+        ?string $paymentURL   = null,
         ?string $errorMessage = null,
         ?string $errorDetails = null
     ) {
         $this->terminalKey = $terminalKey;
-        $this->amount = $amount;
-        $this->orderId = $orderId;
-        $this->status = $status;
-        $this->errorCode = $errorCode;
-        $this->paymentId = $paymentId;
-        $this->success = $success;
+        $this->amount      = $amount;
+        $this->orderId     = $orderId;
+        $this->status      = $status;
+        $this->errorCode   = $errorCode;
+        $this->paymentId   = $paymentId;
+        $this->success     = $success;
 
-        if ($paymentURL) {
+        if (!is_null($paymentURL)) {
             $this->paymentURL = $paymentURL;
         }
 
-        if ($errorMessage) {
+        if (!is_null($errorMessage)) {
             $this->errorMessage = $errorMessage;
         }
 
-        if ($errorDetails) {
+        if (!is_null($errorDetails)) {
             $this->errorDetails = $errorDetails;
         }
     }
