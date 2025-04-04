@@ -8,6 +8,11 @@
             "Egorov\\TinkoffApi\\": "src/"
         }
     },
+    "autoload-dev": {
+        "psr-4": {
+            "Egorov\\TinkoffApi\\Tests\\": "tests/"
+        }
+    },
     "authors": [
         {
             "name": "Chantico",
@@ -17,5 +22,11 @@
     "minimum-stability": "dev",
     "require": {
         "guzzlehttp/guzzle": "8.0.x-dev"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.2@dev"
+    },
+    "scripts": {
+        "test": "phpunit"
     }
 }
