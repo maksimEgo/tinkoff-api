@@ -33,4 +33,9 @@ abstract class Payment
     {
         return $this->errorDetails;
     }
+
+    public function isSuccess(): bool
+    {
+        return $this->errorCode === '0';
+    }
 }

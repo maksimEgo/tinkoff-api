@@ -8,19 +8,29 @@ use Egorov\TinkoffApi\Domain\Entity\InitPayment;
 
 class InitPaymentMapper
 {
-    public static function fromArray($data): InitPayment
+    public static function fromArray(array $response): InitPayment
     {
+        $requiredFields = ['TerminalKey', 'Amount', 'OrderId', 'Status', 'PaymentId', 'Success'];
+
+        foreach ($requiredFields as $field) {
+            if (!isset($response[$field])) {
+                error_log("Missing required field in response: {$field}");
+                error_log("Response content: " . json_encode($response, JSON_UNESCAPED_UNICODE));
+                throw new \RuntimeException("Missing required field in response: {$field}");
+            }
+        }
+
         return new InitPayment(
-            terminalKey:  $data['TerminalKey'],
-            amount:       $data['Amount'],
-            orderId:      $data['OrderId'],
-            status:       $data['Status'],
-            errorCode:    $data['ErrorCode'],
-            success:      $data['Success'],
-            paymentId:    $data['PaymentId'],
-            paymentURL:   $data['PaymentURL'] ?? null,
-            errorMessage: $data['Message'] ?? null,
-            errorDetails: $data['Details'] ?? null,
+            $response['TerminalKey'],
+            $response['Amount'],
+            $response['OrderId'],
+            $response['Status'],
+            $response['ErrorCode'] ?? '0',
+            $response['Success'],
+            $response['PaymentId'],
+            $response['PaymentURL'] ?? null,
+            $response['Message'] ?? null,
+            $response['Details'] ?? null
         );
     }
 }

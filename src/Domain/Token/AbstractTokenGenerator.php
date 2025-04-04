@@ -7,7 +7,6 @@ namespace Egorov\TinkoffApi\Domain\Token;
 abstract class AbstractTokenGenerator implements TokenGeneratorInterface
 {
     protected string $password;
-    protected array $requiredKeys = [];
 
     public function __construct(string $password)
     {
@@ -16,20 +15,39 @@ abstract class AbstractTokenGenerator implements TokenGeneratorInterface
 
     public function generate(array $data): string
     {
-        $filteredData = $this->filterData($data);
+        $filteredData = array_filter($data, function ($value, $key) {
+            return $value !== null && $value !== '' && $key !== 'Token' && $key !== 'Receipt';
+        }, ARRAY_FILTER_USE_BOTH);
+
         $filteredData['Password'] = $this->password;
 
         ksort($filteredData);
-        $values = array_values($filteredData);
-        return hash('sha256', implode('', $values));
-    }
 
-    protected function filterData(array $data): array
-    {
-        return array_filter(
-            $data,
-            fn($key) => in_array($key, $this->requiredKeys, true),
-            ARRAY_FILTER_USE_KEY
-        );
+        $debug = [];
+        foreach ($filteredData as $key => $value) {
+            $debug[] = "$key: $value";
+        }
+        error_log("Sorted parameters: " . implode(', ', $debug));
+
+        $valueString = '';
+        foreach ($filteredData as $value) {
+            if (is_bool($value)) {
+                $value = $value ? 'true' : 'false';
+            }
+
+            if (is_array($value)) {
+                continue;
+            }
+
+            if (is_object($value) && method_exists($value, '__toString')) {
+                $value = (string)$value;
+            }
+
+            $valueString .= $value;
+        }
+
+        error_log("Final token string: " . $valueString);
+
+        return hash('sha256', $valueString);
     }
 }

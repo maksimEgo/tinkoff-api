@@ -41,6 +41,13 @@ class Order
         return $this->customerKey;
     }
 
+    private ?Receipt $receipt = null;
+
+    public function getReceipt(): ?Receipt
+    {
+        return $this->receipt;
+    }
+
     private ?string $recurrent = null;
 
     public function getRecurrent(): ?string
@@ -101,7 +108,7 @@ class Order
     public function withDescription(string $description): self
     {
         if (strlen($description) > 140) {
-            throw new InvalidArgumentException('Amount must not exceed 140 digits.');
+            $description = substr($description, 0, 137) . '...';
         }
 
         $this->description = $description;
@@ -111,6 +118,12 @@ class Order
     public function withCustomerKey(string $customerKey): self
     {
         $this->customerKey = $customerKey;
+        return $this;
+    }
+
+    public function withReceipt(Receipt $receipt): self
+    {
+        $this->receipt = $receipt;
         return $this;
     }
 
