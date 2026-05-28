@@ -7,13 +7,13 @@ namespace Egorov\TinkoffApi\Infrastructure;
 use Egorov\TinkoffApi\Domain\Entity\Order;
 use Egorov\TinkoffApi\Domain\Entity\Payment;
 use Egorov\TinkoffApi\Domain\Entity\Receipt;
-use Egorov\TinkoffApi\Domain\Token\FinishAuthorizeTokenGenerator;
-use Egorov\TinkoffApi\Domain\Token\GetStateTokenGenerator;
-use Egorov\TinkoffApi\Domain\Token\InitTokenGenerator;
+use Egorov\TinkoffApi\Domain\Exception\HttpException;
+use Egorov\TinkoffApi\Domain\Exception\InvalidResponseException;
+use Egorov\TinkoffApi\Domain\Exception\TinkoffApiException;
+use Egorov\TinkoffApi\Domain\Token\TokenGenerator;
 use Egorov\TinkoffApi\Infrastructure\Mapper\AuthorizedPaymentMapper;
 use Egorov\TinkoffApi\Infrastructure\Mapper\InitPaymentMapper;
 use Egorov\TinkoffApi\Infrastructure\Mapper\StatePaymentMapper;
-use Exception;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\GuzzleException;
 
@@ -48,7 +48,6 @@ class TinkoffClient implements PaymentClientInterface
 
         $this->httpClient = new Client([
             'base_uri' => $this->baseUrl,
-            'verify'   => false,
         ]);
     }
 
@@ -100,7 +99,7 @@ class TinkoffClient implements PaymentClientInterface
             $data['Receipt'] = $order->getReceipt()->toArray();
         }
 
-        $tokenGenerator = new InitTokenGenerator($this->password);
+        $tokenGenerator = new TokenGenerator($this->password);
         $data['Token'] = $tokenGenerator->generate($data);
 
         $response = $this->sendRequest('Init', $data);
@@ -119,7 +118,7 @@ class TinkoffClient implements PaymentClientInterface
             $data['IP'] = $clientIp;
         }
 
-        $tokenGenerator = new GetStateTokenGenerator($this->password);
+        $tokenGenerator = new TokenGenerator($this->password);
         $data['Token'] = $tokenGenerator->generate($data);
 
         $response = $this->sendRequest('GetState', $data);
@@ -127,9 +126,6 @@ class TinkoffClient implements PaymentClientInterface
         return StatePaymentMapper::fromArray($response);
     }
 
-    /**
-     * @throws Exception
-     */
     private function sendRequest(string $endpoint, array $data): array
     {
         try {
@@ -141,30 +137,47 @@ class TinkoffClient implements PaymentClientInterface
             $response = $this->httpClient->post($endpoint, $options);
             $body = $response->getBody()->getContents();
 
-            $responseData = json_decode($body, true);
-
-            if (!$responseData) {
-                throw new \RuntimeException("Invalid JSON response from Tinkoff API");
-            }
-
-            if (isset($responseData['Success']) && $responseData['Success'] === false) {
-                $errorMsg     = $responseData['Message'] ?? 'Unknown error';
-                $errorCode    = $responseData['ErrorCode'] ?? 'unknown';
-                $errorDetails = $responseData['Details'] ?? '';
-
-                throw new \RuntimeException(
-                    "Tinkoff API error: {$errorMsg}, code: {$errorCode}, details: {$errorDetails}"
-                );
-            }
-
-            return $responseData;
+            return $this->parseResponse($body);
         } catch (GuzzleException $e) {
-            error_log("HTTP error: " . $e->getMessage());
-            throw new \RuntimeException("HTTP request failed: " . $e->getMessage(), 0, $e);
-        } catch (Exception $e) {
-            error_log("General error: " . $e->getMessage());
-            throw $e;
+            throw new HttpException("HTTP request failed: " . $e->getMessage(), 0, $e);
         }
+    }
+
+    private function sendAbsoluteRequest(string $url, array $data): array
+    {
+        try {
+            $client = new Client();
+            $options = [
+                'headers' => ['Content-Type' => 'application/json'],
+                'json' => $data
+            ];
+
+            $response = $client->post($url, $options);
+            $body = $response->getBody()->getContents();
+
+            return $this->parseResponse($body);
+        } catch (GuzzleException $e) {
+            throw new HttpException("HTTP request failed: " . $e->getMessage(), 0, $e);
+        }
+    }
+
+    private function parseResponse(string $body): array
+    {
+        $responseData = json_decode($body, true);
+
+        if (!$responseData) {
+            throw new InvalidResponseException("Invalid JSON response from Tinkoff API");
+        }
+
+        if (isset($responseData['Success']) && $responseData['Success'] === false) {
+            $errorMsg     = $responseData['Message'] ?? 'Unknown error';
+            $errorCode    = $responseData['ErrorCode'] ?? 'unknown';
+            $errorDetails = $responseData['Details'] ?? '';
+
+            throw new TinkoffApiException($errorMsg, $errorCode, $errorDetails);
+        }
+
+        return $responseData;
     }
 
     public function sendClosingReceipt(string $paymentId, Receipt $receipt): bool
@@ -172,9 +185,11 @@ class TinkoffClient implements PaymentClientInterface
         $paymentStatus = $this->getPaymentStatus($paymentId);
 
         if ($paymentStatus->getStatus() !== 'CONFIRMED') {
-            throw new \RuntimeException(
+            throw new TinkoffApiException(
                 "Закрывающий чек можно отправить только для платежей в статусе CONFIRMED. " .
-                "Текущий статус: " . $paymentStatus->getStatus()
+                "Текущий статус: " . $paymentStatus->getStatus(),
+                '0',
+                ''
             );
         }
 
@@ -184,17 +199,188 @@ class TinkoffClient implements PaymentClientInterface
             'Receipt' => $receipt->toArray()
         ];
 
-        $tokenGenerator = new InitTokenGenerator($this->password);
+        $tokenGenerator = new TokenGenerator($this->password);
         $data['Token'] = $tokenGenerator->generate($data);
 
-        $response = $this->sendRequest('SendClosingReceipt', $data);
+        $cashboxUrl = str_replace('/v2/', '/cashbox/', $this->baseUrl);
+        $response = $this->sendAbsoluteRequest($cashboxUrl . 'SendClosingReceipt', $data);
 
         return $response['Success'] === true;
     }
 
-    /*
-     * in development
-     */
+    public function confirmPayment(string $paymentId, ?int $amount = null, ?Receipt $receipt = null): Payment
+    {
+        $data = [
+            'TerminalKey' => $this->terminalKey,
+            'PaymentId'   => $paymentId,
+        ];
+
+        if ($amount !== null) {
+            $data['Amount'] = $amount;
+        }
+
+        if ($receipt !== null) {
+            $data['Receipt'] = $receipt->toArray();
+        }
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        $response = $this->sendRequest('Confirm', $data);
+
+        return StatePaymentMapper::fromArray($response);
+    }
+
+    public function cancelPayment(string $paymentId, ?int $amount = null, ?Receipt $receipt = null): Payment
+    {
+        $data = [
+            'TerminalKey' => $this->terminalKey,
+            'PaymentId'   => $paymentId,
+        ];
+
+        if ($amount !== null) {
+            $data['Amount'] = $amount;
+        }
+
+        if ($receipt !== null) {
+            $data['Receipt'] = $receipt->toArray();
+        }
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        $response = $this->sendRequest('Cancel', $data);
+
+        return StatePaymentMapper::fromArray($response);
+    }
+
+    public function chargePayment(string $paymentId, string $rebillId): Payment
+    {
+        $data = [
+            'TerminalKey' => $this->terminalKey,
+            'PaymentId'   => $paymentId,
+            'RebillId'    => $rebillId,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        $response = $this->sendRequest('Charge', $data);
+
+        return StatePaymentMapper::fromArray($response);
+    }
+
+    public function checkOrder(string $orderId): array
+    {
+        $data = [
+            'TerminalKey' => $this->terminalKey,
+            'OrderId'     => $orderId,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        $response = $this->sendRequest('CheckOrder', $data);
+
+        $payments = [];
+        if (isset($response['Payments'])) {
+            foreach ($response['Payments'] as $paymentData) {
+                $payments[] = StatePaymentMapper::fromArray(array_merge(
+                    $paymentData,
+                    ['TerminalKey' => $response['TerminalKey'], 'OrderId' => $response['OrderId']]
+                ));
+            }
+        }
+
+        return $payments;
+    }
+
+    public function addCustomer(string $customerKey, ?string $email = null, ?string $phone = null): array
+    {
+        $data = [
+            'TerminalKey'  => $this->terminalKey,
+            'CustomerKey'  => $customerKey,
+        ];
+
+        if ($email !== null) {
+            $data['Email'] = $email;
+        }
+
+        if ($phone !== null) {
+            $data['Phone'] = $phone;
+        }
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        return $this->sendRequest('AddCustomer', $data);
+    }
+
+    public function getCustomer(string $customerKey): array
+    {
+        $data = [
+            'TerminalKey'  => $this->terminalKey,
+            'CustomerKey'  => $customerKey,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        return $this->sendRequest('GetCustomer', $data);
+    }
+
+    public function removeCustomer(string $customerKey): array
+    {
+        $data = [
+            'TerminalKey'  => $this->terminalKey,
+            'CustomerKey'  => $customerKey,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        return $this->sendRequest('RemoveCustomer', $data);
+    }
+
+    public function getCardList(string $customerKey): array
+    {
+        $data = [
+            'TerminalKey'  => $this->terminalKey,
+            'CustomerKey'  => $customerKey,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        return $this->sendRequest('GetCardList', $data);
+    }
+
+    public function removeCard(string $customerKey, string $cardId): array
+    {
+        $data = [
+            'TerminalKey'  => $this->terminalKey,
+            'CustomerKey'  => $customerKey,
+            'CardId'       => $cardId,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        return $this->sendRequest('RemoveCard', $data);
+    }
+
+    public function resend(): array
+    {
+        $data = [
+            'TerminalKey' => $this->terminalKey,
+        ];
+
+        $tokenGenerator = new TokenGenerator($this->password);
+        $data['Token'] = $tokenGenerator->generate($data);
+
+        return $this->sendRequest('Resend', $data);
+    }
+
     public function finishAuthorize(
         string $paymentId,
         array $cardData,
@@ -217,7 +403,7 @@ class TinkoffClient implements PaymentClientInterface
             }
         }
 
-        $tokenGenerator = new FinishAuthorizeTokenGenerator($this->password);
+        $tokenGenerator = new TokenGenerator($this->password);
         $data['Token'] = $tokenGenerator->generate($data);
 
         $response = $this->sendRequest('FinishAuthorize', $data);

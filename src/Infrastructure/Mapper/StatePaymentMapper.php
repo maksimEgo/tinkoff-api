@@ -10,7 +10,7 @@ use Egorov\TinkoffApi\Domain\Enum\SourceEnum;
 
 class StatePaymentMapper
 {
-    public static function fromArray($data): StatePayment
+    public static function fromArray(array $data): StatePayment
     {
         return new StatePayment(
             terminalKey:  $data['TerminalKey'],
