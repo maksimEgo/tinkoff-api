@@ -12,10 +12,12 @@ enum TaxEnum: string
     case VAT7 = 'vat7';
     case VAT10 = 'vat10';
     case VAT20 = 'vat20';
+    case VAT22 = 'vat22';
     case VAT105 = 'vat105';
     case VAT107 = 'vat107';
     case VAT110 = 'vat110';
     case VAT120 = 'vat120';
+    case VAT122 = 'vat122';
 
     public function getDescription(): string
     {
@@ -26,10 +28,12 @@ enum TaxEnum: string
             self::VAT7   => 'НДС по ставке 7%',
             self::VAT10  => 'НДС по ставке 10%',
             self::VAT20  => 'НДС по ставке 20%',
+            self::VAT22  => 'НДС по ставке 22%',
             self::VAT105 => 'НДС по расчетной ставке 5/105',
             self::VAT107 => 'НДС по расчетной ставке 7/107',
             self::VAT110 => 'НДС по расчетной ставке 10/110',
-            self::VAT120 => 'НДС по расчетной ставке 20/120'
+            self::VAT120 => 'НДС по расчетной ставке 20/120',
+            self::VAT122 => 'НДС по расчетной ставке 22/122'
         };
     }
 
@@ -42,10 +46,12 @@ enum TaxEnum: string
             self::VAT7   => 7,
             self::VAT10  => 10,
             self::VAT20  => 20,
+            self::VAT22  => 22,
             self::VAT105 => 5/105,
             self::VAT107 => 7/107,
             self::VAT110 => 10/110,
-            self::VAT120 => 20/120
+            self::VAT120 => 20/120,
+            self::VAT122 => 22/122
         };
     }
 }

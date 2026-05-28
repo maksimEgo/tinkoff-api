@@ -47,7 +47,7 @@ class TinkoffClientTest extends TestCase
         $customer->withEmail($this->email);
 
         $receipt = new Receipt();
-        $receipt->addItem([
+        $receipt->addItemFromArray([
             'Name' => 'Тестовый товар',
             'Price' => 10000,
             'Quantity' => 1.00,
@@ -57,7 +57,7 @@ class TinkoffClientTest extends TestCase
             'PaymentObject' => 'commodity'
         ]);
         $receipt->setCustomer($customer);
-        $receipt->setTaxation('osn');
+        $receipt->setTaxationFromString('osn');
 
         $order = Order::build($orderId, $amount)
             ->withDescription('Тестовый заказ')
@@ -82,7 +82,7 @@ class TinkoffClientTest extends TestCase
         $customer->withEmail($this->email);
 
         $receipt = new Receipt();
-        $receipt->addItem([
+        $receipt->addItemFromArray([
             'Name' => 'Тестовый товар',
             'Price' => 10000,
             'Quantity' => 1.00,
@@ -92,7 +92,7 @@ class TinkoffClientTest extends TestCase
             'PaymentObject' => 'commodity'
         ]);
         $receipt->setCustomer($customer);
-        $receipt->setTaxation('osn');
+        $receipt->setTaxationFromString('osn');
 
         $order = Order::build($orderId, $amount)
             ->withDescription('Тестовая карта: ' . $cardData['description'])
@@ -127,7 +127,7 @@ class TinkoffClientTest extends TestCase
         $customer->withEmail($this->email);
 
         $receipt = new Receipt();
-        $receipt->addItem([
+        $receipt->addItemFromArray([
             'Name' => 'Тестовый товар',
             'Price' => 10000,
             'Quantity' => 1.00,
@@ -137,7 +137,7 @@ class TinkoffClientTest extends TestCase
             'PaymentObject' => 'commodity'
         ]);
         $receipt->setCustomer($customer);
-        $receipt->setTaxation('osn');
+        $receipt->setTaxationFromString('osn');
 
         $order = Order::build($orderId, $amount)
             ->withDescription('Тестовый заказ для проверки статуса')

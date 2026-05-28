@@ -10,7 +10,7 @@ class TestCardProvider
     {
         return [
             'pan'         => '2201382000000021',
-            'exp_date'    => '12/25',
+            'exp_date'    => '12/28',
             'cvv'         => '123',
             'description' => 'Ошибка при списании'
         ];
@@ -20,7 +20,7 @@ class TestCardProvider
     {
         return [
             'pan'         => '2201382000000831',
-            'exp_date'    => '12/25',
+            'exp_date'    => '12/28',
             'cvv'         => '123',
             'description' => 'Недостаточно средств'
         ];
@@ -30,7 +30,7 @@ class TestCardProvider
     {
         return [
             'pan'          => '2201382000000013',
-            'exp_date'     => '12/25',
+            'exp_date'     => '12/28',
             'cvv'          => '123',
             'trans_status' => 'AUTHENTICATION_SUCCESSFUL',
             'description'  => 'Успешное прохождение аутентификации без ввода пароля'
@@ -41,7 +41,7 @@ class TestCardProvider
     {
         return [
             'pan'          => '2201382000000047',
-            'exp_date'     => '12/25',
+            'exp_date'     => '12/28',
             'cvv'          => '123',
             'trans_status' => 'CHALLENGE_REQURIED',
             'description'  => 'Требуется полное прохождение 3DS с редиректом',
@@ -53,7 +53,7 @@ class TestCardProvider
     {
         return [
             'pan'          => '2201382000000005',
-            'exp_date'     => '12/25',
+            'exp_date'     => '12/28',
             'cvv'          => '123',
             'trans_status' => 'ACCOUNT_VERIFICATION_REJECTED',
             'description'  => 'Эмитент отклонил аутентификацию'
@@ -64,7 +64,7 @@ class TestCardProvider
     {
         return [
             'pan'          => '2201382000000021',
-            'exp_date'     => '12/25',
+            'exp_date'     => '12/28',
             'cvv'          => '123',
             'trans_status' => 'NOT_AUTHENTICATED',
             'description'  => 'Карта не поддерживает 3DS'
@@ -75,7 +75,7 @@ class TestCardProvider
     {
         return [
             'pan'          => '2201382000000039',
-            'exp_date'     => '12/25',
+            'exp_date'     => '12/28',
             'cvv'          => '123',
             'trans_status' => 'ATTEMPTS_PROCESSING_PERFORMED',
             'description'  => 'Эмитент недоступен или не поддерживает 3DS v2.1'
@@ -86,7 +86,7 @@ class TestCardProvider
     {
         return [
             'pan'         => '2200770239097761',
-            'exp_date'    => '12/25',
+            'exp_date'    => '12/28',
             'cvv'         => '123',
             'description' => 'Успешная оплата без 3DS'
         ];
@@ -96,7 +96,7 @@ class TestCardProvider
     {
         return [
             'pan'          => '2201382000000591',
-            'exp_date'     => '12/25',
+            'exp_date'     => '12/28',
             'cvv'          => '123',
             'trans_status' => 'AUTHENTICATION_SUCCESSFUL_REASON_18',
             'description'  => 'Успешное прохождение аутентификации без ввода пароля c заполненной transStatusReason'

@@ -17,7 +17,7 @@ class OrderId
         }
 
         if (strlen($value) > 36) {
-            throw new InvalidArgumentException('Amount must not exceed 36 digits.');
+            throw new InvalidArgumentException('Order ID must not exceed 36 characters.');
         }
 
         $this->value = $value;

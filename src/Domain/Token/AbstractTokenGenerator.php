@@ -23,12 +23,6 @@ abstract class AbstractTokenGenerator implements TokenGeneratorInterface
 
         ksort($filteredData);
 
-        $debug = [];
-        foreach ($filteredData as $key => $value) {
-            $debug[] = "$key: $value";
-        }
-        error_log("Sorted parameters: " . implode(', ', $debug));
-
         $valueString = '';
         foreach ($filteredData as $value) {
             if (is_bool($value)) {
@@ -45,8 +39,6 @@ abstract class AbstractTokenGenerator implements TokenGeneratorInterface
 
             $valueString .= $value;
         }
-
-        error_log("Final token string: " . $valueString);
 
         return hash('sha256', $valueString);
     }

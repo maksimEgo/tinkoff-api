@@ -14,8 +14,6 @@ class InitPaymentMapper
 
         foreach ($requiredFields as $field) {
             if (!isset($response[$field])) {
-                error_log("Missing required field in response: {$field}");
-                error_log("Response content: " . json_encode($response, JSON_UNESCAPED_UNICODE));
                 throw new \RuntimeException("Missing required field in response: {$field}");
             }
         }

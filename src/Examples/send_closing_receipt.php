@@ -32,7 +32,7 @@ try {
 
     $receipt = new Receipt();
 
-    $receipt->addItem([
+    $receipt->addItemFromArray([
         'Name'          => 'Наименование товара 1 (закрывающий чек)',
         'Price'         => 5000,
         'Quantity'      => 1.00,
@@ -42,7 +42,7 @@ try {
         'PaymentObject' => 'commodity'
     ]);
 
-    $receipt->addItem([
+    $receipt->addItemFromArray([
         'Name'          => 'Наименование товара 2 (закрывающий чек)',
         'Price'         => 5000,
         'Quantity'      => 1.00,
@@ -53,7 +53,7 @@ try {
     ]);
 
     $receipt->setCustomer($customer);
-    $receipt->setTaxation('osn');
+    $receipt->setTaxationFromString('osn');
 
     $result = $tinkoffClient->sendClosingReceipt($paymentId, $receipt);
 

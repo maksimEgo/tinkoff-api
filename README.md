@@ -1,96 +1,210 @@
-> # Tinkoff API Integration
-> 
-> This project is a PHP implementation for integrating with Tinkoff's payment gateway using a Domain-Driven Design (DDD) and SOLID principles. The package allows easy integration of Tinkoff's payment services into any PHP application.
-> 
-> ## Features
-> - Create a payment (`InitPayment`) through the Tinkoff API.
-> - Type-safe models using value objects for `Amount`, `OrderId`, etc.
-> - Mappers for converting API responses to corresponding entities.
-> - Abstract payment class to handle common payment attributes.
-> 
-> ## Project Structure
-> 
-> - **src/Domain**: Contains the core domain entities and value objects.
->   - **Entity**: Contains abstract and concrete payment entities, such as `Payment` and `InitPayment`.
->   - **Enum**: Enumeration classes like `LanguageEnum` and `PayTypeEnum`.
->   - **ValueObject**: Value objects like `OrderId` and `Amount`.
-> 
-> - **src/Infrastructure**: Contains infrastructure code for API communication.
->   - **Mapper**: Handles mapping between arrays and domain entities.
->   - **TinkoffClient**: Implements the communication with the Tinkoff API.
-> 
-> ## Installation
-> 
-> To install the package, navigate to your project directory and run:
-> 
-> ```sh
-> composer require egorov/tinkoff-api
-> ```
-> 
-> ## Usage
-> 
-> ### Creating a Payment
-> 
-> To create a new payment, you need to create an instance of the `Order` entity and use `TinkoffClient` to initiate the payment:
-> 
-> ```php
-> require __DIR__ . '/../vendor/autoload.php';
-> 
-> use Egorov\TinkoffApi\Domain\Entity\Order;
-> use Egorov\TinkoffApi\Domain\ValueObject\Amount;
-> use Egorov\TinkoffApi\Domain\ValueObject\OrderId;
-> use Egorov\TinkoffApi\Infrastructure\TinkoffClient;
-> 
-> $orderId = new OrderId('12345');
-> $amount = new Amount(10000);
-> 
-> $order = Order::build($orderId, $amount)
->     ->withDescription('Payment for Order #12345');
-> 
-> $terminalKey = 'YourTerminalKey';
-> $password = 'YourPassword';
-> 
-> $tinkoffClient = new TinkoffClient($terminalKey, $password);
-> $payment = $tinkoffClient->initiatePayment($order);
-> 
-> if ($payment->isSuccess()) {
->     echo "Payment successfully initiated. Payment URL: " . $payment->getPaymentUrl();
-> } else {
->     echo "Failed to initiate payment. Error Code: " . $payment->getErrorCode();
-> }
-> ```
-> 
-> ### Mapping Response to Payment Entity
-> 
-> The API responses are mapped to specific payment entities like `InitPayment`. This allows for type-safe interaction with the data:
-> 
-> ```php
-> use Egorov\TinkoffApi\Infrastructure\Mapper\InitPaymentMapper;
-> 
-> $responseData = [
->     'OrderId' => 'Order123',
->     'Amount' => 10000,
->     'Status' => 'NEW',
->     'TerminalKey' => 'TinkoffBankTest',
->     'PaymentURL' => 'https://securepayments.tinkoff.ru/dWCdXdBf',
-> ];
-> 
-> $initPayment = InitPaymentMapper::fromArray($responseData);
-> 
-> echo "Payment Status: " . $initPayment->getStatus() . "\n";
-> echo "Payment URL: " . $initPayment->getPaymentUrl() . "\n";
-> ```
-> 
-> ## Project Principles
-> 
-> - **Domain-Driven Design (DDD)**: The project follows DDD principles by clearly separating domain logic from infrastructure and application logic.
-> - **SOLID Principles**: Each class follows single responsibility and open/closed principles, making the codebase easier to extend and maintain.
-> 
-> ## Contributing
-> 
-> Feel free to submit issues or pull requests if you encounter bugs or have suggestions for improvements.
-> 
-> ## License
-> 
-> This project is licensed under the MIT License.
+# Tinkoff API Integration
 
+PHP-библиотека для интеграции с платёжным шлюзом T-Bank (ex-Tinkoff). Построена на принципах DDD и SOLID.
+
+**Документация API:** https://developer.tbank.ru/eacq/intro/
+
+## Установка
+
+```sh
+composer require egorov/tinkoff-api
+```
+
+Требования: PHP 7.4+, Guzzle 7/8.
+
+## Быстрый старт
+
+### Создание платежа
+
+```php
+use Egorov\TinkoffApi\Domain\Entity\Order;
+use Egorov\TinkoffApi\Domain\ValueObject\Amount;
+use Egorov\TinkoffApi\Domain\ValueObject\OrderId;
+use Egorov\TinkoffApi\Infrastructure\TinkoffClient;
+
+$client = new TinkoffClient('YourTerminalKey', 'YourPassword');
+
+$order = Order::build(new OrderId('order-123'), new Amount(10000))
+    ->withDescription('Оплата заказа #123');
+
+$payment = $client->initiatePayment($order);
+
+if ($payment->isSuccess()) {
+    echo "URL оплаты: " . $payment->getPaymentURL();
+}
+```
+
+### Создание платежа с чеком (54-ФЗ)
+
+```php
+use Egorov\TinkoffApi\Domain\Entity\Customer;
+use Egorov\TinkoffApi\Domain\Entity\Receipt;
+use Egorov\TinkoffApi\Domain\Entity\ReceiptItem;
+use Egorov\TinkoffApi\Domain\Enum\LanguageEnum;
+use Egorov\TinkoffApi\Domain\Enum\Receipt\PaymentMethodEnum;
+use Egorov\TinkoffApi\Domain\Enum\Receipt\PaymentObjectEnum;
+use Egorov\TinkoffApi\Domain\Enum\Receipt\TaxationEnum;
+use Egorov\TinkoffApi\Domain\Enum\Receipt\TaxEnum;
+
+$customer = new Customer();
+$customer->withEmail('customer@example.com');
+
+$item = new ReceiptItem(
+    'Наименование товара',
+    5000,          // цена в копейках
+    1.00,          // количество
+    5000,          // сумма в копейках
+    TaxEnum::VAT20,
+    PaymentMethodEnum::FULL_PAYMENT,
+    PaymentObjectEnum::COMMODITY
+);
+
+$receipt = new Receipt();
+$receipt->addItem($item);
+$receipt->setCustomer($customer);
+$receipt->setTaxation(TaxationEnum::OSN);
+
+$order = Order::build(new OrderId('order-456'), new Amount(5000))
+    ->withDescription('Заказ с чеком')
+    ->withLanguage(LanguageEnum::RUSSIAN)
+    ->withReceipt($receipt);
+
+$payment = $client->initiatePayment($order);
+```
+
+### Проверка статуса платежа
+
+```php
+$status = $client->getPaymentStatus($paymentId);
+
+echo "Статус: " . $status->getStatus(); // NEW, AUTHORIZED, CONFIRMED, CANCELED, ...
+```
+
+### Подтверждение двухстадийного платежа
+
+```php
+$order = Order::build($orderId, $amount)
+    ->withPayType(\Egorov\TinkoffApi\Domain\Enum\PayTypeEnum::TWO_STAGE);
+
+$payment = $client->initiatePayment($order);
+
+// После оплаты клиентом (статус AUTHORIZED):
+$confirmed = $client->confirmPayment($paymentId);
+```
+
+### Отмена / возврат
+
+```php
+// Полная отмена
+$result = $client->cancelPayment($paymentId);
+
+// Частичный возврат (3000 копеек = 30 рублей)
+$result = $client->cancelPayment($paymentId, 3000);
+```
+
+### Рекуррентные платежи
+
+```php
+// Первый платёж с привязкой карты
+$order = Order::build($orderId, $amount)
+    ->withCustomerKey('customer-1')
+    ->withRecurrent('Y');
+
+$payment = $client->initiatePayment($order);
+
+// Последующие списания по RebillId
+$newOrder = Order::build(new OrderId('recurring-1'), new Amount(5000));
+$initPayment = $client->initiatePayment($newOrder);
+$charge = $client->chargePayment($initPayment->getPaymentId(), $rebillId);
+```
+
+### Проверка заказа по OrderId
+
+```php
+$payments = $client->checkOrder('order-123');
+
+foreach ($payments as $payment) {
+    echo $payment->getStatus() . "\n";
+}
+```
+
+### Закрывающий чек
+
+```php
+$receipt = new Receipt();
+$receipt->addItem($item);
+$receipt->setCustomer($customer);
+$receipt->setTaxation(TaxationEnum::OSN);
+
+$result = $client->sendClosingReceipt($paymentId, $receipt);
+```
+
+### Управление покупателями
+
+```php
+$client->addCustomer('customer-1', 'email@example.com', '+79001234567');
+$data = $client->getCustomer('customer-1');
+$client->removeCustomer('customer-1');
+```
+
+### Управление картами
+
+```php
+$cards = $client->getCardList('customer-1');
+$client->removeCard('customer-1', $cardId);
+```
+
+### Переотправка уведомлений
+
+```php
+$result = $client->resend();
+```
+
+## Верификация вебхуков
+
+T-Bank отправляет POST-уведомления на `NotificationURL`. Для проверки подписи:
+
+```php
+use Egorov\TinkoffApi\Infrastructure\NotificationVerifier;
+
+$verifier = new NotificationVerifier('YourPassword');
+
+// Вариант 1: проверка и парсинг из raw body
+$data = $verifier->verifyAndParse(file_get_contents('php://input'));
+
+// Вариант 2: проверка массива
+$data = json_decode($requestBody, true);
+if ($verifier->verify($data)) {
+    // Подпись верна
+}
+```
+
+Ответ на уведомление должен быть `200` с телом `OK`.
+
+## Обработка ошибок
+
+Библиотека выбрасывает три типа исключений:
+
+```php
+use Egorov\TinkoffApi\Domain\Exception\TinkoffApiException;
+use Egorov\TinkoffApi\Domain\Exception\HttpException;
+use Egorov\TinkoffApi\Domain\Exception\InvalidResponseException;
+
+try {
+    $payment = $client->initiatePayment($order);
+} catch (TinkoffApiException $e) {
+    // Ошибка API: $e->getMessage(), $e->getErrorCode(), $e->getErrorDetails()
+} catch (HttpException $e) {
+    // Сетевая ошибка
+} catch (InvalidResponseException $e) {
+    // Невалидный JSON в ответе
+}
+```
+
+## Суммы
+
+Все суммы указываются в **копейках**. `new Amount(10000)` = 100 рублей.
+
+## Лицензия
+
+MIT
